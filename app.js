@@ -34,6 +34,31 @@ app.get('/search', (req, res) => {
   `);
 });
 
+app.post('/form', (req, res) => {
+    const { name = 'Anonymous', email = 'no-email@example.com' } = req.body;
+
+    res.status(201).json({
+        message: 'Form Submission',
+        name,
+        email
+    });
+});
+
+app.post('/api/data', (req, res) => {
+    const data = req.body;
+
+    if (!data || Object.keys(data).length === 0) {
+        return res.status(400).json(
+            { error: 'No data provided' }
+        );
+    }
+
+    res.status(201).json({
+        message: 'Data received successfully',
+        data: data
+    });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

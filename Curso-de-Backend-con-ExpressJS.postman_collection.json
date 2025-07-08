@@ -1,0 +1,80 @@
+{
+	"info": {
+		"_postman_id": "0f2ff546-0604-4deb-b7c0-af51999b2774",
+		"name": "Curso de Backend con ExpressJS",
+		"description": "Colección para probar los endpoints de la aplicación",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "11936278",
+		"_collection_link": "https://gold-trinity-939675.postman.co/workspace/fcef9265-a63b-407d-84d6-8b9b8802d6bf/collection/11936278-0f2ff546-0604-4deb-b7c0-af51999b2774?action=share&source=collection_link&creator=11936278"
+	},
+	"item": [
+		{
+			"name": "Enviar datos de formulario",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "name",
+							"value": "Juan Tavares",
+							"type": "text"
+						},
+						{
+							"key": "email",
+							"value": "juan@example.com",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:3000/form",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"form"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Enviar datos JSON",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"clave1\": \"valor1\",\n    \"clave2\": \"valor2\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/data",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"data"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
