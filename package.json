@@ -2,15 +2,23 @@
   "name": "platzi-javascript-curso-expressjs-2025",
   "version": "1.0.0",
   "description": "Curso de Backend con ExpressJS de Platzi (2025)",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
+    "dev": "node --watch app.js",
+    "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/luis2ra/platzi-javascript-curso-expressjs-2025.git"
   },
-  "keywords": ["javascript", "node", "expressjs", "api", "backend"],
+  "keywords": [
+    "javascript",
+    "node",
+    "expressjs",
+    "api",
+    "backend"
+  ],
   "author": "Luis Altuve <luis2ra@gmail.com>",
   "license": "MIT",
   "bugs": {
@@ -18,6 +26,7 @@
   },
   "homepage": "https://github.com/luis2ra/platzi-javascript-curso-expressjs-2025#readme",
   "dependencies": {
+    "dotenv": "^17.1.0",
     "express": "^5.1.0"
   }
 }
