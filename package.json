@@ -10,9 +10,9 @@
     "type": "git",
     "url": "git+https://github.com/luis2ra/platzi-javascript-curso-expressjs-2025.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["javascript", "node", "expressjs", "api", "backend"],
+  "author": "Luis Altuve <luis2ra@gmail.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/luis2ra/platzi-javascript-curso-expressjs-2025/issues"
   },
