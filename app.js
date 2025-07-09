@@ -2,7 +2,7 @@ require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const bodyParser = require('body-parser');
 
-const fs = require('fs'); // File system module to read files
+const fs = require('fs/promises'); // File system module to read files
 const path = require('path'); // Path module to handle file paths
 // const users = require('./data/users.json'); // Importing users data from a JSON file
 const usersFilePath = path.join(__dirname, 'data', 'users.json'); // Path to the users JSON file
@@ -64,35 +64,34 @@ app.post('/api/data', (req, res) => {
     });
 });
 
-app.get('/users', (req, res) => {
-    // Leer el archivo de usuarios en cada request para obtener la información más actualizada
-    let usersData;
-
+app.get('/users', async (req, res) => {
     try {
-        const fileContent = fs.readFileSync(usersFilePath, 'utf-8');
-        usersData = JSON.parse(fileContent);
+        const fileContent = await fs.readFile(usersFilePath, 'utf-8');
+        const usersData = JSON.parse(fileContent);
+
+        if (!Array.isArray(usersData) || usersData.length === 0) {
+            return res.status(404).json({ error: 'No users found' });
+        }
+    
+        // Validar que cada usuario tenga las propiedades requeridas
+        const requiredFields = ['id', 'name', 'email', 'age'];
+        const invalidUsers = usersData.filter(
+            user => !requiredFields.every(field => user[field] !== undefined && user[field] !== null)
+        );
+    
+        if (invalidUsers.length > 0) {
+            return res.status(500).json({ error: 'Invalid user data detected' });
+        }
+    
+        res.status(200).json(usersData);
+
     } catch (err) {
         return res.status(500).json({ error: 'Error reading users data' });
     }
 
-    if (!Array.isArray(usersData) || usersData.length === 0) {
-        return res.status(404).json({ error: 'No users found' });
-    }
-
-    // Validar que cada usuario tenga las propiedades requeridas
-    const requiredFields = ['id', 'name', 'email', 'age'];
-    const invalidUsers = usersData.filter(
-        user => !requiredFields.every(field => user[field] !== undefined && user[field] !== null)
-    );
-
-    if (invalidUsers.length > 0) {
-        return res.status(500).json({ error: 'Invalid user data detected' });
-    }
-
-    res.status(200).json(usersData);
 });
 
-app.post('/users', (req, res) => {
+app.post('/users', async (req, res) => {
     const { id, name, email, age } = req.body;
 
     // Validar campos requeridos
@@ -117,32 +116,83 @@ app.post('/users', (req, res) => {
     }
 
     // Leer usuarios actuales
-    let usersData;
     try {
-        const fileContent = fs.readFileSync(usersFilePath, 'utf-8');
-        usersData = JSON.parse(fileContent);
+        const fileContent = await fs.readFile(usersFilePath, 'utf-8');
+        const usersData = JSON.parse(fileContent);
+        
+        // Verificar si el usuario ya existe por id o email
+        const exists = usersData.some(user => user.id === id || user.email === email);
+        if (exists) {
+            return res.status(409).json({ error: 'User with this id or email already exists' });
+        }
+    
+        // Crear nuevo usuario
+        const newUser = { id, name, email, age };
+        usersData.push(newUser);
+    
+        // Guardar usuarios actualizados
+        await fs.writeFile(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
+        res.status(201).json({ message: 'User registered successfully', user: newUser });
+
     } catch (err) {
         return res.status(500).json({ error: 'Error reading users data' });
     }
 
-    // Verificar si el usuario ya existe por id o email
-    const exists = usersData.some(user => user.id === id || user.email === email);
-    if (exists) {
-        return res.status(409).json({ error: 'User with this id or email already exists' });
-    }
+});
 
-    // Crear nuevo usuario
-    const newUser = { id, name, email, age };
-    usersData.push(newUser);
+app.put('/users/:id', async (req, res) => {
+    const userId = req.params.id;
+    const { name, email, age } = req.body;
 
-    // Guardar usuarios actualizados
     try {
-        fs.writeFileSync(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
+        const fileContent = await fs.readFile(usersFilePath, 'utf-8');
+        const usersData = JSON.parse(fileContent);
+
+        // Buscar usuario por id
+        const userIndex = usersData.findIndex(user => Number(user.id) === Number(userId));
+
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+    
+        // Validar campos si se envían
+        if (name !== undefined) {
+            if (typeof name !== 'string' || name.trim().length < 2) {
+                return res.status(400).json({ error: 'Name must be at least 2 characters long' });
+            }
+            usersData[userIndex].name = name;
+        }
+    
+        if (email !== undefined) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (typeof email !== 'string' || !emailRegex.test(email)) {
+                return res.status(400).json({ error: 'Invalid email format' });
+            }
+            // Verificar que el nuevo email no esté en uso por otro usuario
+            const emailExists = usersData.some(
+                (user, idx) => user.email === email && idx !== userIndex
+            );
+            if (emailExists) {
+                return res.status(409).json({ error: 'Email already in use by another user' });
+            }
+            usersData[userIndex].email = email;
+        }
+    
+        if (age !== undefined) {
+            if (typeof age !== 'number' || age <= 0) {
+                return res.status(400).json({ error: 'Age must be a positive number' });
+            }
+            usersData[userIndex].age = age;
+        }
+    
+        // Guardar usuarios actualizados
+        await fs.writeFile(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
+        res.status(200).json({ message: 'User updated successfully', user: usersData[userIndex] });
+
     } catch (err) {
-        return res.status(500).json({ error: 'Error saving user data' });
+        return res.status(500).json({ error: 'Error reading users data' });
     }
 
-    res.status(201).json({ message: 'User registered successfully', user: newUser });
 });
 
 app.listen(PORT, () => {

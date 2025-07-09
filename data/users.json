@@ -25,8 +25,14 @@
   },
   {
     "id": 5,
-    "name": "Lu",
-    "email": "luis1@example.com",
-    "age": 1
+    "name": "Luis Albarran",
+    "email": "luis.albarran@example.com",
+    "age": 49
+  },
+  {
+    "id": 6,
+    "name": "Sele",
+    "email": "sele@example.com",
+    "age": 20
   }
 ]
