@@ -201,12 +201,38 @@ const validateUserForUpdate = (userData) => {
     return { isValid: true };
 };
 
+/**
+ * Validates user ID for operations like delete or get by ID
+ * @param {string|number} id - User ID to validate
+ * @returns {Object} Validation result with isValid boolean and error message
+ */
+const validateUserId = (id) => {
+    if (!id || (typeof id !== 'string' && typeof id !== 'number')) {
+        return {
+            isValid: false,
+            error: 'User ID is required and must be a string or number'
+        };
+    }
+
+    // Check if ID is a valid number when converted
+    const numericId = Number(id);
+    if (isNaN(numericId) || numericId <= 0) {
+        return {
+            isValid: false,
+            error: 'User ID must be a valid positive number'
+        };
+    }
+
+    return { isValid: true };
+};
+
 module.exports = {
     validateRequiredFields,
     validateName,
     validateAge,
     validateEmail,
     validateUsersData,
+    validateUserId,
     checkUserExists,
     checkEmailInUse,
     validateUserForCreation,

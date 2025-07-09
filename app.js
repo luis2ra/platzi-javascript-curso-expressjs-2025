@@ -4,14 +4,15 @@ const bodyParser = require('body-parser');
 
 const fs = require('fs/promises'); // File system module to read files
 const path = require('path'); // Path module to handle file paths
-// const users = require('./data/users.json'); // Importing users data from a JSON file
-const usersFilePath = path.join(__dirname, 'data', 'users.json'); // Path to the users JSON file
+// Use environment variable for users file path, fallback to default if not set
+const usersFilePath = process.env.USERS_FILE_PATH || path.join(__dirname, 'data', 'users.json');
 
 // Import validation functions
 const {
     validateUsersData,
     validateUserForCreation,
     validateUserForUpdate,
+    validateUserId,
     checkUserExists,
     checkEmailInUse
 } = require('./utils/validations');
@@ -173,6 +174,49 @@ app.put('/users/:id', async (req, res) => {
         return res.status(500).json({ error: 'Error reading users data' });
     }
 
+});
+
+app.delete('/users/:id', async (req, res) => {
+    const userId = req.params.id;
+
+    // Validate user ID
+    const idValidation = validateUserId(userId);
+    if (!idValidation.isValid) {
+        return res.status(400).json({ error: idValidation.error });
+    }
+
+    try {
+        const fileContent = await fs.readFile(usersFilePath, 'utf-8');
+        const usersData = JSON.parse(fileContent);
+
+        // Find user by id
+        const userIndex = usersData.findIndex(user => Number(user.id) === Number(userId));
+
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Store user data before deletion for response
+        const deletedUser = usersData[userIndex];
+
+        // Remove user from array
+        usersData.splice(userIndex, 1);
+
+        // Save updated users array
+        await fs.writeFile(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
+        
+        res.status(200).json({ 
+            message: 'User deleted successfully', 
+            deletedUser: {
+                id: deletedUser.id,
+                name: deletedUser.name,
+                email: deletedUser.email
+            }
+        });
+
+    } catch (err) {
+        return res.status(500).json({ error: 'Error processing user deletion' });
+    }
 });
 
 app.listen(PORT, () => {
