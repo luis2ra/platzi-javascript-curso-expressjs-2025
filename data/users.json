@@ -34,5 +34,11 @@
     "name": "Sele",
     "email": "sele@example.com",
     "age": 20
+  },
+  {
+    "id": 7,
+    "name": "Selena",
+    "email": "sele7@example.com",
+    "age": 20
   }
 ]

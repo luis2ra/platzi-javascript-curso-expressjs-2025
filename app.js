@@ -7,6 +7,15 @@ const path = require('path'); // Path module to handle file paths
 // const users = require('./data/users.json'); // Importing users data from a JSON file
 const usersFilePath = path.join(__dirname, 'data', 'users.json'); // Path to the users JSON file
 
+// Import validation functions
+const {
+    validateUsersData,
+    validateUserForCreation,
+    validateUserForUpdate,
+    checkUserExists,
+    checkEmailInUse
+} = require('./utils/validations');
+
 const app = express();
 app.use(bodyParser.json()); // Middleware to parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true })); // Middleware to parse URL-encoded bodies
@@ -69,18 +78,10 @@ app.get('/users', async (req, res) => {
         const fileContent = await fs.readFile(usersFilePath, 'utf-8');
         const usersData = JSON.parse(fileContent);
 
-        if (!Array.isArray(usersData) || usersData.length === 0) {
-            return res.status(404).json({ error: 'No users found' });
-        }
-    
-        // Validar que cada usuario tenga las propiedades requeridas
-        const requiredFields = ['id', 'name', 'email', 'age'];
-        const invalidUsers = usersData.filter(
-            user => !requiredFields.every(field => user[field] !== undefined && user[field] !== null)
-        );
-    
-        if (invalidUsers.length > 0) {
-            return res.status(500).json({ error: 'Invalid user data detected' });
+        // Validate users data using validation function
+        const validation = validateUsersData(usersData);
+        if (!validation.isValid) {
+            return res.status(validation.error === 'No users found' ? 404 : 500).json({ error: validation.error });
         }
     
         res.status(200).json(usersData);
@@ -94,43 +95,28 @@ app.get('/users', async (req, res) => {
 app.post('/users', async (req, res) => {
     const { id, name, email, age } = req.body;
 
-    // Validar campos requeridos
-    if (!id || !name || !email || typeof age !== 'number') {
-        return res.status(400).json({ error: 'Missing or invalid fields. Required: id, name, email, age (number)' });
+    // Validate user data for creation
+    const validation = validateUserForCreation({ id, name, email, age });
+    if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error });
     }
 
-    // Validar que name tenga al menos 2 caracteres
-    if (typeof name !== 'string' || name.trim().length < 2) {
-        return res.status(400).json({ error: 'Name must be at least 2 characters long' });
-    }
-
-    // Validar que age sea un número positivo
-    if (typeof age !== 'number' || age <= 0) {
-        return res.status(400).json({ error: 'Age must be a positive number' });
-    }
-
-    // Validar formato de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (typeof email !== 'string' || !emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    // Leer usuarios actuales
+    // Read current users
     try {
         const fileContent = await fs.readFile(usersFilePath, 'utf-8');
         const usersData = JSON.parse(fileContent);
         
-        // Verificar si el usuario ya existe por id o email
-        const exists = usersData.some(user => user.id === id || user.email === email);
-        if (exists) {
-            return res.status(409).json({ error: 'User with this id or email already exists' });
+        // Check if user already exists
+        const existsCheck = checkUserExists(usersData, id, email);
+        if (existsCheck.exists) {
+            return res.status(409).json({ error: existsCheck.error });
         }
     
-        // Crear nuevo usuario
+        // Create new user
         const newUser = { id, name, email, age };
         usersData.push(newUser);
     
-        // Guardar usuarios actualizados
+        // Save updated users
         await fs.writeFile(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
         res.status(201).json({ message: 'User registered successfully', user: newUser });
 
@@ -144,48 +130,42 @@ app.put('/users/:id', async (req, res) => {
     const userId = req.params.id;
     const { name, email, age } = req.body;
 
+    // Validate update data
+    const validation = validateUserForUpdate({ name, email, age });
+    if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error });
+    }
+
     try {
         const fileContent = await fs.readFile(usersFilePath, 'utf-8');
         const usersData = JSON.parse(fileContent);
 
-        // Buscar usuario por id
+        // Find user by id
         const userIndex = usersData.findIndex(user => Number(user.id) === Number(userId));
 
         if (userIndex === -1) {
             return res.status(404).json({ error: 'User not found' });
         }
     
-        // Validar campos si se envían
+        // Update fields if provided and valid
         if (name !== undefined) {
-            if (typeof name !== 'string' || name.trim().length < 2) {
-                return res.status(400).json({ error: 'Name must be at least 2 characters long' });
-            }
             usersData[userIndex].name = name;
         }
     
         if (email !== undefined) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (typeof email !== 'string' || !emailRegex.test(email)) {
-                return res.status(400).json({ error: 'Invalid email format' });
-            }
-            // Verificar que el nuevo email no esté en uso por otro usuario
-            const emailExists = usersData.some(
-                (user, idx) => user.email === email && idx !== userIndex
-            );
-            if (emailExists) {
-                return res.status(409).json({ error: 'Email already in use by another user' });
+            // Check if new email is already in use by another user
+            const emailCheck = checkEmailInUse(usersData, email, userIndex);
+            if (emailCheck.exists) {
+                return res.status(409).json({ error: emailCheck.error });
             }
             usersData[userIndex].email = email;
         }
     
         if (age !== undefined) {
-            if (typeof age !== 'number' || age <= 0) {
-                return res.status(400).json({ error: 'Age must be a positive number' });
-            }
             usersData[userIndex].age = age;
         }
     
-        // Guardar usuarios actualizados
+        // Save updated users
         await fs.writeFile(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
         res.status(200).json({ message: 'User updated successfully', user: usersData[userIndex] });
 
