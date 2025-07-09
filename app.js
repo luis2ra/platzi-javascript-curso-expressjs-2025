@@ -4,7 +4,8 @@ const bodyParser = require('body-parser');
 
 const fs = require('fs'); // File system module to read files
 const path = require('path'); // Path module to handle file paths
-const users = require('./data/users.json'); // Importing users data from a JSON file
+// const users = require('./data/users.json'); // Importing users data from a JSON file
+const usersFilePath = path.join(__dirname, 'data', 'users.json'); // Path to the users JSON file
 
 const app = express();
 app.use(bodyParser.json()); // Middleware to parse JSON bodies
@@ -65,7 +66,6 @@ app.post('/api/data', (req, res) => {
 
 app.get('/users', (req, res) => {
     // Leer el archivo de usuarios en cada request para obtener la información más actualizada
-    const usersFilePath = path.join(__dirname, 'data', 'users.json');
     let usersData;
 
     try {
@@ -90,6 +90,59 @@ app.get('/users', (req, res) => {
     }
 
     res.status(200).json(usersData);
+});
+
+app.post('/users', (req, res) => {
+    const { id, name, email, age } = req.body;
+
+    // Validar campos requeridos
+    if (!id || !name || !email || typeof age !== 'number') {
+        return res.status(400).json({ error: 'Missing or invalid fields. Required: id, name, email, age (number)' });
+    }
+
+    // Validar que name tenga al menos 2 caracteres
+    if (typeof name !== 'string' || name.trim().length < 2) {
+        return res.status(400).json({ error: 'Name must be at least 2 characters long' });
+    }
+
+    // Validar que age sea un número positivo
+    if (typeof age !== 'number' || age <= 0) {
+        return res.status(400).json({ error: 'Age must be a positive number' });
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (typeof email !== 'string' || !emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Leer usuarios actuales
+    let usersData;
+    try {
+        const fileContent = fs.readFileSync(usersFilePath, 'utf-8');
+        usersData = JSON.parse(fileContent);
+    } catch (err) {
+        return res.status(500).json({ error: 'Error reading users data' });
+    }
+
+    // Verificar si el usuario ya existe por id o email
+    const exists = usersData.some(user => user.id === id || user.email === email);
+    if (exists) {
+        return res.status(409).json({ error: 'User with this id or email already exists' });
+    }
+
+    // Crear nuevo usuario
+    const newUser = { id, name, email, age };
+    usersData.push(newUser);
+
+    // Guardar usuarios actualizados
+    try {
+        fs.writeFileSync(usersFilePath, JSON.stringify(usersData, null, 2), 'utf-8');
+    } catch (err) {
+        return res.status(500).json({ error: 'Error saving user data' });
+    }
+
+    res.status(201).json({ message: 'User registered successfully', user: newUser });
 });
 
 app.listen(PORT, () => {
